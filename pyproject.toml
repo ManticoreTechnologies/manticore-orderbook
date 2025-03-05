@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "manticore-orderbook"
+version = "0.3.0"
+description = "High-performance order book management for trading systems"
+readme = "README.md"
+authors = [
+    {name = "Manticore Technologies"}
+]
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.8"
+dependencies = []
+
+[project.optional-dependencies]
+benchmark = ["tabulate>=0.9.0"]
+dev = ["pytest>=7.0.0", "pytest-cov>=4.0.0", "tabulate>=0.9.0"]
+
+[project.urls]
+"Homepage" = "https://github.com/manticoretechnologies/manticore-orderbook"
+"Bug Tracker" = "https://github.com/manticoretechnologies/manticore-orderbook/issues" 
