@@ -6,18 +6,23 @@ from setuptools import setup, find_packages
 
 setup(
     name="manticore-orderbook",
-    version="0.3.0",
-    description="High-performance order book management for trading systems",
+    version="1.0.0",
+    packages=find_packages(),
+    install_requires=[
+        "tabulate>=0.8.9",
+    ],
+    author="Manticore Technologies",
+    author_email="info@manticore.tech",
+    description="A high-performance order book implementation for cryptocurrency exchanges",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    author="Manticore Technologies",
-    author_email="info@example.com",
-    url="https://github.com/yourusername/manticore-orderbook",
-    packages=find_packages(),
+    url="https://github.com/manticoretechnologies/manticore-orderbook",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
+        "Intended Audience :: Financial and Insurance Industry",
+        "Topic :: Office/Business :: Financial :: Investment",
     ],
     python_requires=">=3.8",
 ) 

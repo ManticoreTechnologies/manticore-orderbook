@@ -1,0 +1,14 @@
+# Core dependencies
+tabulate>=0.8.9
+psutil>=5.9.0
+
+# Development dependencies
+pytest>=7.0.0
+pytest-cov>=4.0.0
+flake8>=5.0.0
+black>=22.0.0
+mypy>=0.950
+
+# Documentation
+sphinx>=4.5.0
+sphinx-rtd-theme>=1.0.0 

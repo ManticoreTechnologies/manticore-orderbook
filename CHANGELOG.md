@@ -1,62 +1,68 @@
 # Changelog
 
-All notable changes to the manticore-orderbook library will be documented in this file.
+All notable changes to the manticore-orderbook project will be documented in this file.
 
-## [0.3.0] - 2025-03-05
+## [1.0.0] - 2023-03-06
 
-### Added
-- MarketManager for multi-market support
-- Time-In-Force order policies (GTC, IOC, FOK, GTD)
-- Order expiry management with automatic cleanup
-- High-resolution latency monitoring for all operations
-- User-based order tracking across markets
-- Enhanced fee structure with configurable rates
-- Comprehensive exchange example
-- Performance improvements for production use
+### Major Refactoring
 
-### Improved
-- Thread safety with enhanced locking mechanism
-- Error handling and recovery for all operations
-- Documentation with multi-market examples
-- Latency statistics with percentile calculations
-- API design for exchange integration
+- Complete refactoring of the codebase to focus on core orderbook functionality
+- Removed market manager, storage, and API modules to focus on integration-ready design
+- Enhanced event system for improved integration with external systems
 
-### Fixed
-- Order expiry edge cases
-- Race conditions in multi-threaded environments
-- Fee calculation for partial fills
+### Changed
 
-## [0.2.0] - 2025-03-04
+- Redesigned the module to focus on a single responsibility - order book management
+- Improved event system for better integration with external systems
+- Comprehensive documentation for integration with other modules
+- More consistent APIs and data structures
+
+### Removed
+
+- Removed `MarketManager` (to be replaced by external module)
+- Removed storage functionality (to be handled by manticore-storage)
+- Removed API server functionality
+- Removed example files not related to core functionality
 
 ### Added
-- Efficient depth queries with caching for improved performance
-- Batch order operations for high-frequency trading scenarios
-- Atomic order modifications with rollback on error
-- Price improvement matching logic for better execution prices
-- Enhanced trade records with fee calculations
-- Thread-safety for all operations with proper locking
-- Comprehensive performance benchmarks
-- Makefile for common development tasks
-- Enhanced examples demonstrating advanced features
-- Optional dependencies for development and benchmarking
 
-### Improved
-- Order book snapshots with configurable depth
-- Internal data structures optimized for high-frequency operations
-- FIFO execution for orders at the same price level
-- Detailed logging and debugging capabilities
-- Documentation with examples of advanced features
+- New integration guides for connecting with other modules
+- Detailed event system documentation
+- Improved integration patterns and examples
 
-### Fixed
-- Bid ordering to ensure proper price-time priority
-- Edge cases in order matching algorithm
-
-## [0.1.0] - 2025-03-01
+## [0.3.0] - 2023-02-15
 
 ### Added
-- Initial release of manticore-orderbook
-- Basic order book functionality with price-time priority
-- Support for limit orders (buy/sell)
-- Order modification and cancellation
-- Simple order book snapshots
+
+- Added batch operations for improved performance
+- Implemented price improvement feature
+- Added latency monitoring for performance analysis
+
+### Changed
+
+- Optimized depth queries with caching
+- Improved thread safety for concurrent operations
+- Enhanced fee calculation
+
+## [0.2.0] - 2023-01-20
+
+### Added
+
+- Added Time-In-Force support (GTC, IOC, FOK, GTD)
+- Implemented order expiry management
+- Added user tracking for fee calculation
+
+### Changed
+
+- Improved matching algorithm efficiency
+- Enhanced error handling and logging
+
+## [0.1.0] - 2023-01-05
+
+### Added
+
+- Initial implementation of OrderBook with price-time priority
+- Basic order management (add, modify, cancel)
+- Simple matching engine
+- Snapshot functionality
 - Trade history tracking 

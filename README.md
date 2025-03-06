@@ -1,24 +1,25 @@
 # Manticore OrderBook
 
-A high-performance, exchange-ready Python library for managing order book data in trading systems. Production-optimized for high-frequency trading environments with multi-market support.
+A high-performance, event-driven order book implementation for cryptocurrency exchanges. This module provides the core order matching engine with price-time priority, designed to be integrated with other modules in a larger exchange system.
 
-## Features
+## Overview
 
-- Fast order book management with strict price-time priority
-- Efficient order matching engine with optional price improvement
-- Support for limit orders (buy/sell)
-- Atomic order modification and cancellation
-- Batch operations for efficient processing
-- High-performance depth queries and cached snapshots
-- Detailed trade history tracking with fee calculation
-- High-resolution performance monitoring
-- Thread-safe operations with atomic guarantees
-- O(log N) performance for critical operations
-- Multi-market support with the MarketManager
-- Time-In-Force policies (GTC, IOC, FOK, GTD)
-- Order expiry management
-- Latency monitoring with detailed metrics
-- Comprehensive stress tests and benchmarks
+Manticore OrderBook is designed with a focused purpose: to provide a fast, reliable order book implementation that serves as the foundation for cryptocurrency exchange systems. It handles the core functionalities of an order book without overreaching into areas that should be handled by separate specialized modules.
+
+### Key Features
+
+- **High-Performance Matching Engine**: Implements price-time priority matching with optimized data structures
+- **Event-Driven Architecture**: Provides a robust event system for integration with other components
+- **Thread-Safe Operations**: All operations are thread-safe for reliable concurrent use
+- **Comprehensive Order Types**: Supports various time-in-force options (GTC, IOC, FOK, GTD)
+- **Clean API**: Provides a simple, well-documented API for easy integration
+
+## Documentation
+
+- [API Documentation](API.md) - Detailed API reference
+- [Event System Documentation](EVENTS.md) - Complete guide to the event system
+- [Integration Guide](INTEGRATION.md) - How to integrate with other systems
+- [Performance Benchmarks](BENCHMARKS.md) - Performance metrics and tuning
 
 ## Installation
 
@@ -26,321 +27,257 @@ A high-performance, exchange-ready Python library for managing order book data i
 pip3 install manticore-orderbook
 ```
 
-Or for development:
+Or install from source:
 
 ```bash
-git clone https://github.com/manticoretechnologies/manticore-orderbook.git
+git clone https://github.com/your-repo/manticore-orderbook.git
 cd manticore-orderbook
 pip3 install -e .
 ```
 
-## Quick Start
+## Basic Usage
+
+Here's a simple example of how to use the OrderBook:
 
 ```python
 from manticore_orderbook import OrderBook
-import time
+from manticore_orderbook.event_manager import EventManager, EventType
 
-# Create an order book with optional features
-orderbook = OrderBook(
-    symbol="BTC/USD",
-    enable_price_improvement=True,  # Enable price improvement for taker orders
-    maker_fee_rate=0.001,           # 0.1% fee for makers
-    taker_fee_rate=0.002            # 0.2% fee for takers
-)
+# Create an event manager
+event_manager = EventManager()
 
-# Add buy (bid) order
-order_id_1 = orderbook.add_order(
-    side="buy", 
-    price=20000.0, 
-    quantity=1.5, 
-    order_id="order1",
-    time_in_force="GTC"  # Good Till Cancelled (default)
-)
+# Create a new order book
+order_book = OrderBook(symbol="BTC/USD", event_manager=event_manager)
 
-# Add sell (ask) order with expiry
-order_id_2 = orderbook.add_order(
-    side="sell", 
-    price=20100.0, 
-    quantity=2.0, 
-    order_id="order2",
-    time_in_force="GTD",  # Good Till Date
-    expiry_time=time.time() + 3600  # Expires in 1 hour
-)
+# Subscribe to events
+def handle_trade(event_type, data):
+    print(f"Trade executed: {data}")
 
-# Get order book snapshot with depth
-snapshot = orderbook.get_snapshot(depth=10)
-print(f"Bids: {snapshot['bids']}")
-print(f"Asks: {snapshot['asks']}")
+event_manager.subscribe(EventType.TRADE_EXECUTED, handle_trade)
 
-# Modify an order (atomic operation)
-orderbook.modify_order(
-    order_id="order1", 
-    new_price=20050.0, 
-    new_quantity=1.8,
-    new_expiry_time=None  # Leave expiry unchanged
-)
+# Add orders
+order_book.add_order(side="buy", price=19500.0, quantity=1.5, order_id="bid1")
+order_book.add_order(side="sell", price=19600.0, quantity=1.0, order_id="ask1")
 
-# Cancel an order
-orderbook.cancel_order(order_id="order2")
+# Execute a matching order that will generate a trade
+order_book.add_order(side="buy", price=19700.0, quantity=0.5, order_id="bid2") 
 
-# Get recent trades with fees
-trades = orderbook.get_trade_history(limit=10)
-print(f"Recent trades: {trades}")
-
-# Batch add multiple orders for efficiency
-orders = [
-    {"side": "buy", "price": 19950.0, "quantity": 1.2, "time_in_force": "GTC"},
-    {"side": "buy", "price": 19900.0, "quantity": 2.0, "time_in_force": "GTC"},
-    {"side": "sell", "price": 20150.0, "quantity": 0.5, "time_in_force": "IOC"}  # Immediate Or Cancel
-]
-order_ids = orderbook.batch_add_orders(orders)
+# Get the current state of the order book
+snapshot = order_book.get_snapshot(depth=5)
+print(snapshot)
 
 # Get order book statistics
-stats = orderbook.get_statistics()
-print(f"Order book statistics: {stats}")
-
-# Check latency metrics
-latency_stats = orderbook.get_latency_stats()
-print(f"Latency statistics: {latency_stats}")
+stats = order_book.get_statistics()
+print(stats)
 ```
 
-## Multi-Market Support
+## Integration with Other Modules
 
-The library includes a `MarketManager` for managing multiple order books:
+### Integration with manticore-storage
+
+The OrderBook module is designed to work seamlessly with a separate storage module. Here's how to integrate with manticore-storage:
 
 ```python
-from manticore_orderbook import MarketManager
+from manticore_orderbook import OrderBook, EventType, EventManager
+from manticore_storage import StorageManager  # Hypothetical import
 
-# Create a market manager
-manager = MarketManager()
+# Create components
+event_manager = EventManager()
+order_book = OrderBook(symbol="BTC/USD")
+storage = StorageManager(database_url="postgresql://user:pass@localhost/exchange")
 
-# Create multiple markets
-btc_usd = manager.create_market(
-    symbol="BTC/USD", 
-    maker_fee_rate=0.001,
-    taker_fee_rate=0.002
-)
+# Set up persistence via events
+def persist_order(event_type, data):
+    if event_type == EventType.ORDER_ADDED:
+        storage.save_order(data)
+    elif event_type == EventType.ORDER_MODIFIED:
+        storage.update_order(data["order_id"], data)
+    elif event_type == EventType.ORDER_CANCELLED:
+        storage.mark_order_cancelled(data["order_id"])
 
-eth_usd = manager.create_market(
-    symbol="ETH/USD",
-    maker_fee_rate=0.0015,
-    taker_fee_rate=0.0025
-)
+def persist_trade(event_type, data):
+    storage.save_trade(data)
 
-# Place orders in different markets
-manager.place_order(
-    symbol="BTC/USD",
-    side="buy",
-    price=48000.0,
-    quantity=1.5,
-    user_id="user1",
-    time_in_force="GTC"
-)
+# Subscribe to events
+event_manager.subscribe(EventType.ORDER_ADDED, persist_order)
+event_manager.subscribe(EventType.ORDER_MODIFIED, persist_order)
+event_manager.subscribe(EventType.ORDER_CANCELLED, persist_order)
+event_manager.subscribe(EventType.TRADE_EXECUTED, persist_trade)
 
-manager.place_order(
-    symbol="ETH/USD",
-    side="sell",
-    price=3250.0,
-    quantity=8.0,
-    user_id="user2",
-    time_in_force="GTD",
-    expiry_time=time.time() + 3600  # 1 hour
-)
-
-# Get snapshots of all markets
-btc_snapshot = manager.get_market_snapshot("BTC/USD")
-eth_snapshot = manager.get_market_snapshot("ETH/USD")
-
-# Get user's orders across all markets
-user1_orders = manager.get_user_orders("user1")
-
-# Clean up expired orders in all markets
-expired_orders = manager.clean_expired_orders()
-
-# Get overall statistics
-stats = manager.get_statistics()
+# Operation continues with automatic persistence
+order_book.add_order(side="buy", price=19500.0, quantity=1.5)
 ```
 
-## Exchange-Ready Features
+### Integration with manticore-matching
 
-The Manticore OrderBook is designed to be used in production trading systems, with features specifically tailored for exchange operations:
-
-### Production Readiness
-- **Multi-market support**: Manage multiple trading pairs with a single MarketManager
-- **User order tracking**: Track and manage orders by user ID across all markets
-- **Fee calculation**: Configurable maker/taker fee rates with automatic calculation
-- **Order expiry**: Automated cleanup of expired orders
-- **Latency monitoring**: High-resolution timing of all operations
-- **Error handling**: Robust error handling and recovery mechanisms
-
-### Time-In-Force Policies
-
-The order book supports the following Time-In-Force policies:
-
-- **GTC (Good Till Cancelled)**: Order remains active until explicitly cancelled or fully filled
-- **IOC (Immediate Or Cancel)**: Fills what it can immediately, then cancels any remaining quantity
-- **FOK (Fill Or Kill)**: Either fills the entire order immediately or cancels it entirely
-- **GTD (Good Till Date)**: Order remains active until a specified expiry time is reached
-
-### Example: Creating a Complete Exchange
+For more advanced matching algorithms beyond the basic price-time priority:
 
 ```python
-# Initialize the exchange with multiple markets
-exchange = MarketManager(enable_logging=True)
+from manticore_orderbook import OrderBook, Order, EventType, EventManager
+from manticore_matching import MatchingEngine  # Hypothetical import
 
-# Set up markets with different fee structures
-markets = [
-    {
-        "symbol": "BTC/USD",
-        "maker_fee_rate": 0.0005,  # 0.05% fee
-        "taker_fee_rate": 0.001,   # 0.1% fee
-        "enable_price_improvement": True
-    },
-    {
-        "symbol": "ETH/USD",
-        "maker_fee_rate": 0.001,   # 0.1% fee
-        "taker_fee_rate": 0.002,   # 0.2% fee
-        "enable_price_improvement": True
-    },
-    {
-        "symbol": "ETH/BTC",
-        "maker_fee_rate": 0.001,
-        "taker_fee_rate": 0.002,
-        "enable_price_improvement": False
-    }
-]
+# Create components
+event_manager = EventManager()
+order_book = OrderBook(symbol="BTC/USD")
+matching_engine = MatchingEngine(strategy="pro_rata")  # Example custom matching strategy
 
-# Initialize all markets
-for market_config in markets:
-    exchange.create_market(**market_config)
+# Intercept orders before they're added to the book
+def pre_process_order(event_type, data):
+    # Apply custom matching logic
+    if data.get("special_instructions"):
+        matching_engine.process_special_order(data)
 
-# Place orders with different Time-In-Force policies
-exchange.place_order(
-    symbol="BTC/USD",
-    side="buy",
-    price=47500.0,
-    quantity=1.0,
-    user_id="market_maker1",
-    time_in_force="GTC"  # Good Till Cancelled
-)
-
-# Place a time-limited order
-exchange.place_order(
-    symbol="ETH/USD",
-    side="sell",
-    price=3300.0,
-    quantity=5.0,
-    user_id="trader1",
-    time_in_force="GTD",  # Good Till Date
-    expiry_time=time.time() + 3600  # 1 hour
-)
-
-# Place an IOC order that will execute immediately or be cancelled
-exchange.place_order(
-    symbol="BTC/USD",
-    side="buy",
-    price=48000.0,
-    quantity=0.5,
-    user_id="trader2",
-    time_in_force="IOC"  # Immediate Or Cancel
-)
-
-# Get exchange-wide statistics
-stats = exchange.get_statistics()
-print(f"Total markets: {stats['total_markets']}")
-print(f"Total orders: {stats['total_orders']}")
-print(f"Total users: {stats['total_users']}")
-
-# Check latency across all markets
-for symbol in exchange.list_markets():
-    market = exchange.get_market(symbol)
-    latency = market.get_latency_stats()
-    print(f"{symbol} latency metrics: {latency}")
+# Subscribe to pre-processing
+event_manager.subscribe(EventType.ORDER_ADDED, pre_process_order)
 ```
 
-## Documentation
+### Using with a Full Exchange System
 
-The `OrderBook` class provides the following key methods:
+In a complete exchange system, the OrderBook would be one component among many. Here's a conceptual example:
 
-### Order Management
-- `add_order(side, price, quantity, order_id=None, time_in_force=None, expiry_time=None, user_id=None)`: Add a new limit order
-- `batch_add_orders(orders)`: Add multiple orders efficiently in a single batch
-- `modify_order(order_id, new_price=None, new_quantity=None, new_expiry_time=None)`: Modify an existing order atomically
-- `cancel_order(order_id)`: Cancel an existing order
-- `batch_cancel_orders(order_ids)`: Cancel multiple orders efficiently in a single batch
-- `clean_expired_orders()`: Remove expired orders from the book
+```python
+from manticore_orderbook import OrderBook, EventManager
+from manticore_storage import StorageManager  # Hypothetical
+from manticore_auth import AuthManager  # Hypothetical
+from manticore_risk import RiskManager  # Hypothetical
+from manticore_api import ApiServer  # Hypothetical
 
-### Order Book Information
-- `get_snapshot(depth=10)`: Get the current state of the order book with specified depth
-- `get_order_depth_at_price(side, price)`: Get total quantity at a specific price level
-- `get_order(order_id)`: Get information about a specific order
-- `get_trade_history(limit=100)`: Get recent trades including fees
+class Exchange:
+    def __init__(self):
+        # Core components
+        self.event_manager = EventManager()
+        self.storage = StorageManager()
+        self.auth = AuthManager()
+        self.risk = RiskManager()
+        
+        # Create order books for each market
+        self.markets = {}
+        self.setup_markets()
+        
+        # API layer
+        self.api = ApiServer(self)
+    
+    def setup_markets(self):
+        market_configs = self.storage.get_market_configs()
+        for config in market_configs:
+            symbol = config["symbol"]
+            self.markets[symbol] = OrderBook(symbol=symbol)
+            
+    def place_order(self, user_id, symbol, side, price, quantity):
+        # Authenticate
+        if not self.auth.validate_user(user_id):
+            return {"error": "Unauthorized"}
+            
+        # Risk check
+        if not self.risk.check_order(user_id, symbol, side, price, quantity):
+            return {"error": "Risk limits exceeded"}
+            
+        # Place the order
+        order_book = self.markets.get(symbol)
+        if not order_book:
+            return {"error": "Market not found"}
+            
+        order_id = order_book.add_order(
+            side=side, 
+            price=price, 
+            quantity=quantity,
+            user_id=user_id
+        )
+        
+        return {"order_id": order_id}
+```
 
-### Performance Monitoring
-- `get_statistics()`: Get detailed statistics about the order book operations
-- `get_latency_stats()`: Get detailed latency metrics for operations
-- `clear()`: Clear all orders from the order book
+## Event System
 
-The `MarketManager` class provides:
+The event system is at the heart of integration capabilities. Here are the key events you can subscribe to:
 
-### Market Management
-- `create_market(symbol, maker_fee_rate=0, taker_fee_rate=0, enable_price_improvement=True)`: Create a new market
-- `get_market(symbol)`: Get a specific market
-- `list_markets()`: List all available markets
-- `remove_market(symbol)`: Remove a market
+| Event Type | Description | Data Payload |
+|------------|-------------|--------------|
+| ORDER_ADDED | Triggered when an order is added to the book | Order details |
+| ORDER_MODIFIED | Triggered when an order is modified | Updated order details |
+| ORDER_CANCELLED | Triggered when an order is cancelled | Order ID and metadata |
+| ORDER_FILLED | Triggered when an order is partially or fully filled | Fill details |
+| TRADE_EXECUTED | Triggered when a trade is executed | Trade details |
+| PRICE_LEVEL_CHANGED | Triggered when a price level changes | Price level details |
+| BOOK_UPDATED | General notification that the book state has changed | Summary of changes |
 
-### Cross-Market Operations
-- `place_order(symbol, side, price, quantity, user_id=None, time_in_force="GTC", expiry_time=None)`: Place an order in a specific market
-- `cancel_order(order_id)`: Cancel an order by its ID
-- `modify_order(order_id, new_price=None, new_quantity=None, new_expiry_time=None)`: Modify an existing order
-- `get_user_orders(user_id)`: Get all orders for a specific user across all markets
-- `get_market_snapshot(symbol, depth=10)`: Get a snapshot of a specific market
-- `clean_expired_orders()`: Clean expired orders across all markets
-- `get_statistics()`: Get statistics across all markets
+## Benchmark Results
 
-## Advanced Features
+The OrderBook has been benchmarked for performance. Here are the key metrics:
 
-### Price-Time Priority (FIFO)
-The order book implements strict price-time priority, ensuring that orders at the same price level are executed in the order they were received.
+- Adding orders: ~28,000 orders/second
+- Modifying orders: ~64,000 modifications/second
+- Cancelling orders: ~120,000 cancellations/second
+- Matching orders: ~50,000 operations/second in batch mode
+- Depth queries: ~170,000 queries/second
 
-### Price Improvement
-When enabled, the price improvement feature allows taker orders to execute at better prices than their limit prices if such prices are available in the order book.
-
-### Atomic Operations
-All order modifications are atomic, ensuring that the order book remains in a consistent state even in case of errors or exceptions.
-
-### Efficient Depth Queries
-The order book implements efficient depth queries using caching strategies, ensuring that frequently accessed information like top price levels is retrieved with minimal overhead.
-
-### Thread Safety
-All operations are thread-safe, making the order book suitable for use in multi-threaded environments.
-
-### Latency Monitoring
-The library includes comprehensive latency monitoring for all operations, with detailed statistics including mean, median, 90th percentile, and 99th percentile latency times.
-
-## Performance
-
-The library uses efficient data structures to ensure high performance:
-- Order insertions, modifications, and cancellations are O(log N) operations
-- Order matching happens automatically when prices cross
-- Batch operations provide significant performance improvements for high-volume scenarios
-- Depth queries use caching for fast access to frequently used information
-- All trade history is kept in memory with configurable size limits
-
-Run the included benchmark script to evaluate performance on your system:
+You can run the benchmarks yourself with:
 
 ```bash
 python3 benchmark.py
 ```
 
-## Integration
+## Development
 
-This library is designed to be integrated easily with other components:
-- No external dependencies required for core functionality
-- Clean, simple API for integration with other systems
-- Fully self-contained with no persistence requirements
-- Proper Python packaging for easy distribution and installation
+### Running Tests
+
+```bash
+python3 -m unittest discover
+```
+
+### Building the Package
+
+```bash
+python3 setup.py bdist_wheel
+```
+
+## API Reference
+
+### OrderBook
+
+The core class that manages orders and handles matching.
+
+```python
+order_book = OrderBook(
+    symbol="BTC/USD",
+    maker_fee_rate=0.001,  # 0.1%
+    taker_fee_rate=0.002,  # 0.2%
+    enable_logging=True
+)
+```
+
+#### Key Methods
+
+- `add_order(side, price, quantity, order_id=None, time_in_force=None)`: Add a new order to the book
+- `modify_order(order_id, new_price=None, new_quantity=None)`: Modify an existing order
+- `cancel_order(order_id)`: Cancel an order
+- `get_snapshot(depth=10)`: Get the current order book state
+- `get_order(order_id)`: Get details of a specific order
+- `get_statistics()`: Get order book statistics
+
+### EventManager
+
+Manages the event system for all components.
+
+```python
+event_manager = EventManager(enable_logging=True, max_history_size=1000)
+```
+
+#### Key Methods
+
+- `subscribe(event_type, handler)`: Subscribe to an event type
+- `unsubscribe(event_type, handler)`: Unsubscribe from an event type
+- `publish(event_type, data, symbol=None)`: Publish an event
+- `subscribe_all(handler)`: Subscribe to all event types
+- `get_event_history(limit=100)`: Get recent event history
+
+## Design Considerations
+
+1. **Separation of Concerns**: The OrderBook focuses solely on order book management without handling persistence, authentication, etc.
+2. **Event-Driven Architecture**: All state changes are published as events, allowing other components to react accordingly
+3. **Performance First**: Data structures and algorithms are optimized for high throughput
+4. **Thread Safety**: All methods are protected against concurrent access
 
 ## License
 
-MIT 
+MIT License 

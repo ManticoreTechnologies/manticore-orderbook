@@ -17,6 +17,7 @@ from collections import defaultdict, deque
 from typing import Dict, List, Optional, Tuple, Any, DefaultDict, Deque, Set, Union, Callable
 
 from .models import Order, Trade, Side, TimeInForce
+from .event_manager import EventManager, EventType
 
 # Configure logging
 logger = logging.getLogger("manticore_orderbook")
@@ -43,7 +44,8 @@ class OrderBook:
                  enable_price_improvement: bool = False,
                  maker_fee_rate: float = 0.0, taker_fee_rate: float = 0.0,
                  enable_logging: bool = True, log_level: int = logging.INFO,
-                 check_expiry_interval: float = 1.0):
+                 check_expiry_interval: float = 1.0,
+                 event_manager: Optional[EventManager] = None):
         """
         Initialize a new order book.
         
@@ -56,6 +58,7 @@ class OrderBook:
             enable_logging: Whether to enable logging
             log_level: Logging level (from logging module)
             check_expiry_interval: How often to check for expired orders (in seconds)
+            event_manager: EventManager instance for publishing events (creates one if None)
         """
         self.symbol = symbol
         self.max_trade_history = max_trade_history
@@ -68,6 +71,9 @@ class OrderBook:
         self.enable_logging = enable_logging
         if enable_logging:
             self._setup_logging(log_level)
+        
+        # Set up event manager - create one if not provided
+        self.event_manager = event_manager if event_manager is not None else EventManager()
         
         # Price levels (sorted for efficient traversal)
         self._bids: List[float] = []  # Descending order for bids
@@ -103,6 +109,7 @@ class OrderBook:
             "num_orders_added": 0,
             "num_orders_modified": 0,
             "num_orders_cancelled": 0,
+            "num_orders_matched": 0,
             "num_trades_executed": 0,
             "total_volume_traded": 0.0
         }
@@ -121,6 +128,13 @@ class OrderBook:
         
         # Start periodic checks for expired orders
         self._start_expiry_checker()
+        
+        # Publish market created event
+        self.event_manager.publish(
+            event_type=EventType.MARKET_CREATED,
+            data={"symbol": self.symbol},
+            symbol=self.symbol
+        )
         
         logger.info(f"OrderBook initialized for {symbol} with price improvement {'enabled' if enable_price_improvement else 'disabled'}")
     
@@ -164,16 +178,31 @@ class OrderBook:
         try:
             with self._lock:
                 current_time = time.time()
-                expired_orders = []
+                expired_orders = {}
                 
                 # Find all expired orders
                 for order_id, order in list(self._orders.items()):
                     if order.time_in_force == TimeInForce.GTD and order.is_expired(current_time):
-                        expired_orders.append(order_id)
+                        # Store order data for event emission
+                        expired_orders[order_id] = {
+                            "order_id": order.order_id,
+                            "side": str(order.side),
+                            "price": order.price,
+                            "quantity": order.quantity,
+                            "expiry_time": order.expiry_time,
+                            "user_id": order.user_id
+                        }
                 
                 # Cancel each expired order
-                for order_id in expired_orders:
+                for order_id, order_data in expired_orders.items():
                     if self.cancel_order(order_id):
+                        # Emit ORDER_EXPIRED event
+                        self.event_manager.publish(
+                            event_type=EventType.ORDER_EXPIRED,
+                            data=order_data,
+                            symbol=self.symbol
+                        )
+                        
                         removed_count += 1
                         if self.enable_logging:
                             logger.info(f"Removed expired order: {order_id}")
@@ -340,8 +369,29 @@ class OrderBook:
                 # Second pass: Match all orders against the book (without adding them yet)
                 # This prevents earlier orders in the batch from matching with later ones
                 remaining_orders = []
+                matched_orders = []
+                all_trades = []
+                
                 for order in order_objects:
+                    original_quantity = order.quantity
                     trades = self._match_order(order)
+                    all_trades.extend(trades)
+                    
+                    # Collect trades information for batch event
+                    matched_quantity = sum(t.quantity for t in trades) if trades else 0
+                    
+                    order_result = {
+                        "order_id": order.order_id,
+                        "side": str(order.side),
+                        "price": order.price,
+                        "original_quantity": original_quantity,
+                        "matched_quantity": matched_quantity,
+                        "remaining_quantity": order.quantity,
+                        "trades": len(trades)
+                    }
+                    
+                    if trades:
+                        matched_orders.append(order_result)
                     
                     # Handle FOK orders - must be fully filled or cancelled
                     if order.time_in_force == TimeInForce.FOK and order.quantity > 0:
@@ -358,8 +408,33 @@ class OrderBook:
                 for order in remaining_orders:
                     self._add_to_book(order)
                 
+                # Emit a batch summary event with richer information
+                timestamp = time.time()
+                batch_event_data = {
+                    "timestamp": timestamp,
+                    "orders_added": len(orders),
+                    "orders_matched": len(matched_orders),
+                    "orders_remaining": len(remaining_orders),
+                    "matched_orders": matched_orders[:10] if len(matched_orders) > 10 else matched_orders,  # Limit payload size
+                    "total_volume_matched": sum(t.quantity for t in all_trades),
+                    "trade_count": len(all_trades)
+                }
+                
+                # Add top of book info if available
+                if self._bids:
+                    batch_event_data["top_bid"] = self._bids[0]
+                if self._asks:
+                    batch_event_data["top_ask"] = self._asks[0]
+                
+                self.event_manager.publish(
+                    event_type=EventType.BOOK_UPDATED,
+                    data=batch_event_data,
+                    symbol=self.symbol
+                )
+                
                 # Update statistics
                 self._stats["num_orders_added"] += len(orders)
+                self._stats["num_orders_matched"] += len(matched_orders)
                 
                 # Invalidate cache
                 self._cache_valid = False
@@ -436,6 +511,10 @@ class OrderBook:
                         # Remove order from book
                         self._remove_from_book(order)
                         
+                        # Store original values for event emission
+                        original_quantity = order.quantity
+                        original_expiry = order.expiry_time
+                        
                         # Update order
                         order.update(
                             quantity=new_quantity,
@@ -444,6 +523,23 @@ class OrderBook:
                         
                         # Add back to book
                         self._add_to_book(order)
+                        
+                        # Emit ORDER_MODIFIED event
+                        self.event_manager.publish(
+                            event_type=EventType.ORDER_MODIFIED,
+                            data={
+                                "order_id": order.order_id,
+                                "side": str(order.side),
+                                "price": order.price,
+                                "old_quantity": original_quantity,
+                                "new_quantity": order.quantity,
+                                "old_expiry_time": original_expiry,
+                                "new_expiry_time": order.expiry_time,
+                                "timestamp": time.time(),
+                                "user_id": order.user_id
+                            },
+                            symbol=self.symbol
+                        )
                         
                         # Update statistics
                         self._stats["num_orders_modified"] += 1
@@ -478,13 +574,13 @@ class OrderBook:
     
     def cancel_order(self, order_id: str) -> bool:
         """
-        Cancel an existing order.
+        Cancel an order by ID.
         
         Args:
             order_id: ID of the order to cancel
             
         Returns:
-            True if order was cancelled, False if order not found
+            True if order was cancelled, False if not found
         """
         start_time = time.time()
         
@@ -499,7 +595,24 @@ class OrderBook:
                 if self.enable_logging:
                     logger.info(f"Cancelling order {order_id}: {order.side} {order.quantity} @ {order.price}")
                 
+                # Store order data before removal for event emission
+                order_data = {
+                    "order_id": order.order_id,
+                    "side": str(order.side),
+                    "price": order.price,
+                    "quantity": order.quantity,
+                    "timestamp": order.timestamp,
+                    "user_id": order.user_id
+                }
+                
                 self._remove_from_book(order)
+                
+                # Emit ORDER_CANCELLED event
+                self.event_manager.publish(
+                    event_type=EventType.ORDER_CANCELLED,
+                    data=order_data,
+                    symbol=self.symbol
+                )
                 
                 # Update statistics
                 self._stats["num_orders_cancelled"] += 1
@@ -602,10 +715,25 @@ class OrderBook:
                 self._ask_depth_cache = asks.copy()
                 self._cache_valid = True
                 
-                return {
+                snapshot = {
                     "bids": bids,
                     "asks": asks
                 }
+                
+                # Emit SNAPSHOT_CREATED event
+                self.event_manager.publish(
+                    event_type=EventType.SNAPSHOT_CREATED,
+                    data={
+                        "symbol": self.symbol,
+                        "timestamp": time.time(),
+                        "depth": depth,
+                        "bid_levels": len(bids),
+                        "ask_levels": len(asks)
+                    },
+                    symbol=self.symbol
+                )
+                
+                return snapshot
         finally:
             # Record latency
             elapsed = time.time() - start_time
@@ -730,9 +858,17 @@ class OrderBook:
                 "num_orders_added": 0,
                 "num_orders_modified": 0,
                 "num_orders_cancelled": 0,
+                "num_orders_matched": 0,
                 "num_trades_executed": 0,
                 "total_volume_traded": 0.0
             }
+            
+            # Emit MARKET_CLEARED event
+            self.event_manager.publish(
+                event_type=EventType.MARKET_CLEARED,
+                data={"symbol": self.symbol, "timestamp": time.time()},
+                symbol=self.symbol
+            )
     
     def _add_to_book(self, order: Order) -> None:
         """Add an order to the book."""
@@ -766,6 +902,85 @@ class OrderBook:
             
             # Add to timestamp priority queue for FIFO execution
             bisect.insort_left(self._ask_timestamps[order.price], (order.timestamp, order.order_id))
+            
+        # Emit ORDER_ADDED event
+        self.event_manager.publish(
+            event_type=EventType.ORDER_ADDED,
+            data={
+                "order_id": order.order_id,
+                "side": str(order.side),
+                "price": order.price,
+                "quantity": order.quantity,
+                "time_in_force": str(order.time_in_force),
+                "expiry_time": order.expiry_time,
+                "user_id": order.user_id,
+                "timestamp": order.timestamp
+            },
+            symbol=self.symbol
+        )
+        
+        # If this creates a new price level, emit price level event
+        if ((order.side == Side.BUY and len(self._bid_orders[order.price]) == 1) or
+            (order.side == Side.SELL and len(self._ask_orders[order.price]) == 1)):
+            self.event_manager.publish(
+                event_type=EventType.PRICE_LEVEL_ADDED,
+                data={
+                    "side": str(order.side),
+                    "price": order.price,
+                    "quantity": order.quantity,
+                    "order_count": 1
+                },
+                symbol=self.symbol
+            )
+        else:
+            # If this adds to an existing price level, emit price level changed event
+            total_quantity = 0
+            if order.side == Side.BUY:
+                for o in self._bid_orders[order.price].values():
+                    total_quantity += o.quantity
+                order_count = len(self._bid_orders[order.price])
+            else:
+                for o in self._ask_orders[order.price].values():
+                    total_quantity += o.quantity
+                order_count = len(self._ask_orders[order.price])
+                
+            self.event_manager.publish(
+                event_type=EventType.PRICE_LEVEL_CHANGED,
+                data={
+                    "side": str(order.side),
+                    "price": order.price,
+                    "quantity": total_quantity,
+                    "order_count": order_count,
+                    "timestamp": time.time()
+                },
+                symbol=self.symbol
+            )
+        
+        # Check if this affects the top of the book
+        is_top_of_book_change = False
+        if order.side == Side.BUY and (not self._asks or order.price >= self._asks[0]):
+            is_top_of_book_change = True
+        elif order.side == Side.SELL and (not self._bids or order.price <= self._bids[0]):
+            is_top_of_book_change = True
+            
+        # Emit DEPTH_CHANGED event if this affects the top of the book
+        if is_top_of_book_change:
+            self.event_manager.publish(
+                event_type=EventType.DEPTH_CHANGED,
+                data={
+                    "timestamp": time.time(),
+                    "top_bid": self._bids[0] if self._bids else None,
+                    "top_ask": self._asks[0] if self._asks else None
+                },
+                symbol=self.symbol
+            )
+        
+        # Emit BOOK_UPDATED event
+        self.event_manager.publish(
+            event_type=EventType.BOOK_UPDATED,
+            data={"timestamp": time.time()},
+            symbol=self.symbol
+        )
     
     def _remove_from_book(self, order: Order) -> None:
         """Remove an order from the book."""
@@ -773,39 +988,117 @@ class OrderBook:
         if order.order_id in self._orders:
             del self._orders[order.order_id]
         
+        # Check if this is the last order at this price level
+        is_last_order = False
+        price_level_quantity = 0
+        
         # Remove from appropriate side
         if order.side == Side.BUY:
-            # Remove from bid side
+            # Check if order exists at this price level
             if order.price in self._bid_orders and order.order_id in self._bid_orders[order.price]:
+                # Remove from bid side
                 del self._bid_orders[order.price][order.order_id]
                 
                 # Remove from timestamp queue
-                for i, (_, oid) in enumerate(self._bid_timestamps[order.price]):
-                    if oid == order.order_id:
+                for i, (_, order_id) in enumerate(self._bid_timestamps[order.price]):
+                    if order_id == order.order_id:
                         self._bid_timestamps[order.price].pop(i)
                         break
                 
-                # Clean up empty price level
+                # If this was the last order at this price level, remove the price level
                 if not self._bid_orders[order.price]:
+                    is_last_order = True
+                    if order.price in self._bids:
+                        self._bids.remove(order.price)
                     del self._bid_orders[order.price]
-                    self._deleted_price_levels.add(order.price)
-                    self._bids = [p for p in self._bids if p != order.price]
+                    if order.price in self._bid_timestamps:
+                        del self._bid_timestamps[order.price]
+                else:
+                    # Calculate remaining quantity at this price level
+                    for o in self._bid_orders[order.price].values():
+                        price_level_quantity += o.quantity
         else:
-            # Remove from ask side
+            # Check if order exists at this price level
             if order.price in self._ask_orders and order.order_id in self._ask_orders[order.price]:
+                # Remove from ask side
                 del self._ask_orders[order.price][order.order_id]
                 
                 # Remove from timestamp queue
-                for i, (_, oid) in enumerate(self._ask_timestamps[order.price]):
-                    if oid == order.order_id:
+                for i, (_, order_id) in enumerate(self._ask_timestamps[order.price]):
+                    if order_id == order.order_id:
                         self._ask_timestamps[order.price].pop(i)
                         break
                 
-                # Clean up empty price level
+                # If this was the last order at this price level, remove the price level
                 if not self._ask_orders[order.price]:
+                    is_last_order = True
+                    if order.price in self._asks:
+                        self._asks.remove(order.price)
                     del self._ask_orders[order.price]
-                    self._deleted_price_levels.add(order.price)
-                    self._asks = [p for p in self._asks if p != order.price]
+                    if order.price in self._ask_timestamps:
+                        del self._ask_timestamps[order.price]
+                else:
+                    # Calculate remaining quantity at this price level
+                    for o in self._ask_orders[order.price].values():
+                        price_level_quantity += o.quantity
+        
+        # Invalidate cache
+        self._cache_valid = False
+        
+        # Determine if this affected the top of the book
+        is_top_of_book_change = False
+        if self._bids and self._asks:  # Only if both sides have orders
+            if order.side == Side.BUY and order.price >= self._bids[0]:
+                is_top_of_book_change = True
+            elif order.side == Side.SELL and order.price <= self._asks[0]:
+                is_top_of_book_change = True
+        
+        # Emit appropriate price level event
+        if is_last_order:
+            self.event_manager.publish(
+                event_type=EventType.PRICE_LEVEL_REMOVED,
+                data={
+                    "side": str(order.side),
+                    "price": order.price,
+                    "timestamp": time.time()
+                },
+                symbol=self.symbol
+            )
+        else:
+            # Only emit if the order was actually in the book
+            if ((order.side == Side.BUY and order.price in self._bid_orders) or
+                (order.side == Side.SELL and order.price in self._ask_orders)):
+                self.event_manager.publish(
+                    event_type=EventType.PRICE_LEVEL_CHANGED,
+                    data={
+                        "side": str(order.side),
+                        "price": order.price,
+                        "quantity": price_level_quantity,
+                        "order_count": (len(self._bid_orders[order.price]) if order.side == Side.BUY 
+                                     else len(self._ask_orders[order.price])),
+                        "timestamp": time.time()
+                    },
+                    symbol=self.symbol
+                )
+        
+        # Emit DEPTH_CHANGED event if this affects the top of the book
+        if is_top_of_book_change:
+            self.event_manager.publish(
+                event_type=EventType.DEPTH_CHANGED,
+                data={
+                    "timestamp": time.time(),
+                    "top_bid": self._bids[0] if self._bids else None,
+                    "top_ask": self._asks[0] if self._asks else None
+                },
+                symbol=self.symbol
+            )
+            
+        # Emit BOOK_UPDATED event
+        self.event_manager.publish(
+            event_type=EventType.BOOK_UPDATED,
+            data={"timestamp": time.time()},
+            symbol=self.symbol
+        )
     
     def _match_order(self, order: Order) -> List[Trade]:
         """
@@ -887,6 +1180,23 @@ class OrderBook:
                     # Add to trade history
                     self._trade_history.append(trade)
                     
+                    # Emit TRADE_EXECUTED event
+                    self.event_manager.publish(
+                        event_type=EventType.TRADE_EXECUTED,
+                        data={
+                            "maker_order_id": trade.maker_order_id,
+                            "taker_order_id": trade.taker_order_id,
+                            "price": trade.price,
+                            "quantity": trade.quantity,
+                            "timestamp": trade.timestamp,
+                            "maker_user_id": trade.maker_user_id,
+                            "taker_user_id": trade.taker_user_id,
+                            "maker_fee": trade.maker_fee,
+                            "taker_fee": trade.taker_fee
+                        },
+                        symbol=self.symbol
+                    )
+                    
                     # Update order quantities
                     order.quantity -= trade_quantity
                     matched_order.quantity -= trade_quantity
@@ -894,6 +1204,38 @@ class OrderBook:
                     # Update statistics
                     self._stats["num_trades_executed"] += 1
                     self._stats["total_volume_traded"] += trade_quantity
+                    
+                    # Emit ORDER_FILLED event for matched (maker) order
+                    self.event_manager.publish(
+                        event_type=EventType.ORDER_FILLED,
+                        data={
+                            "order_id": matched_order.order_id,
+                            "fill_price": trade.price,
+                            "fill_quantity": trade_quantity,
+                            "remaining_quantity": matched_order.quantity,
+                            "timestamp": trade.timestamp,
+                            "user_id": matched_order.user_id,
+                            "is_maker": True,
+                            "fee": trade.maker_fee
+                        },
+                        symbol=self.symbol
+                    )
+                    
+                    # Emit ORDER_FILLED event for incoming (taker) order
+                    self.event_manager.publish(
+                        event_type=EventType.ORDER_FILLED,
+                        data={
+                            "order_id": order.order_id,
+                            "fill_price": trade.price,
+                            "fill_quantity": trade_quantity,
+                            "remaining_quantity": order.quantity,
+                            "timestamp": trade.timestamp,
+                            "user_id": order.user_id,
+                            "is_maker": False,
+                            "fee": trade.taker_fee
+                        },
+                        symbol=self.symbol
+                    )
                     
                     if matched_order.quantity <= 0:
                         # Matched order is fully filled, remove from book
@@ -905,7 +1247,11 @@ class OrderBook:
                 
                 # If there are no orders left at this price level, remove it
                 if not opposing_orders[best_price]:
-                    opposing_levels.pop(0)
+                    if opposing_levels:  # Check if opposing_levels is not empty
+                        opposing_levels.pop(0)
+                    else:
+                        # No more levels to match against
+                        break
             
             return trades
         finally:
