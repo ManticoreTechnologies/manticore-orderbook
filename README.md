@@ -22,7 +22,7 @@ A high-performance, feature-rich limit order book implementation for financial t
 pip3 install manticore-orderbook
 
 # From source
-git clone https://github.com/your-organization/manticore-orderbook.git
+git clone https://github.com/manticoretechnologies/manticore-orderbook.git
 cd manticore-orderbook
 pip3 install -e .
 ```
@@ -131,7 +131,7 @@ python3 -m manticore_orderbook.visualizer
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-organization/manticore-orderbook.git
+git clone https://github.com/manticoretechnologies/manticore-orderbook.git
 cd manticore-orderbook
 
 # Create and activate virtual environment
@@ -161,4 +161,10 @@ Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) 
 
 ## License
 
-Manticore OrderBook is licensed under the MIT License. See the [LICENSE](LICENSE) file for details. 
+Manticore OrderBook is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Contact
+
+- **Website**: [https://manticore.technology](https://manticore.technology)
+- **Email**: [dev@manticore.technology](mailto:dev@manticore.technology)
+- **GitHub**: [https://github.com/manticoretechnologies](https://github.com/manticoretechnologies) 

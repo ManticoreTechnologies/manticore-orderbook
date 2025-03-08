@@ -15,7 +15,7 @@ Contact: dev@manticore.technology
 GitHub: https://github.com/manticoretechnologies/
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 # Core components
 from .core.orderbook import OrderBook

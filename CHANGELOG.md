@@ -2,6 +2,27 @@
 
 All notable changes to the manticore-orderbook project will be documented in this file.
 
+## [1.0.1] - 2025-03-08
+
+### Enhanced
+
+- Improved market order processing reliability
+- Enhanced visualization interface with horizontal layout
+- Fixed error handling for invalid inputs
+
+### Changed
+
+- Modernized UI design for the visualization tool
+- Updated company information across all documentation
+- Improved socket connection reliability
+- Enhanced error handling and user feedback
+
+### Added
+
+- New notification system for trade confirmations
+- Better metrics display for market data
+- Improved responsive design for different screen sizes
+
 ## [1.0.0] - 2023-03-06
 
 ### Major Refactoring

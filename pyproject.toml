@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "manticore-orderbook"
-version = "1.0.0"
+version = "1.0.1"
 description = "A high-performance order book implementation for cryptocurrency exchanges"
 readme = "README.md"
 authors = [
