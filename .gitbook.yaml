@@ -1,0 +1,12 @@
+root: ./mkdocs-docs/docs/
+
+structure:
+  readme: index.md
+  summary: SUMMARY.md
+
+redirects:
+  user-guide: user-guide.md
+  api-reference: api-reference.md
+  integration: integration.md
+  events: events.md
+  changelog: changelog.md 

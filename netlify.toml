@@ -1,0 +1,11 @@
+[build]
+  publish = "mkdocs-docs/site"
+  command = "cd mkdocs-docs && mkdocs build"
+
+[build.environment]
+  PYTHON_VERSION = "3.8"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200 
