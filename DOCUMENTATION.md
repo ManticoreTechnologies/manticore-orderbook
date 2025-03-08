@@ -1,0 +1,1 @@
+# GitHub Pages Deployment\n\nTo deploy the documentation to GitHub Pages, you would run:\n\n\n\nThis will build and deploy the site to the gh-pages branch of your GitHub repository.\n\nAlternatively, you can manually copy the contents of the 'site' directory to your web server or documentation hosting platform.
