@@ -24,17 +24,53 @@ class Side(Enum):
     @classmethod
     def from_string(cls, side_str: str) -> 'Side':
         """Convert a string to a Side enum value."""
-        side_str = side_str.lower()
-        if side_str in ('buy', 'bid'):
+        if side_str.upper() in ('BUY', 'BID'):
             return cls.BUY
-        elif side_str in ('sell', 'ask'):
+        elif side_str.upper() in ('SELL', 'ASK'):
             return cls.SELL
         else:
             raise ValueError(f"Invalid side: {side_str}. Must be 'buy' or 'sell'.")
     
     def __str__(self) -> str:
-        """Return string representation of side."""
-        return "buy" if self == Side.BUY else "sell"
+        return self.name.lower()
+
+
+class OrderType(Enum):
+    """Order type enumeration."""
+    LIMIT = auto()      # Standard limit order
+    MARKET = auto()     # Market order (executed at best available price)
+    STOP_LIMIT = auto() # Stop-limit order (becomes limit order when price reaches stop price)
+    STOP_MARKET = auto() # Stop-market order (becomes market order when price reaches stop price)
+    POST_ONLY = auto()  # Only provides liquidity, never takes it
+    ICEBERG = auto()    # Shows only part of the total order quantity
+    TRAILING_STOP = auto()  # Stop price that moves with the market
+    
+    @classmethod
+    def from_string(cls, type_str: Optional[str]) -> 'OrderType':
+        """Convert a string to an OrderType enum value."""
+        if type_str is None:
+            return cls.LIMIT
+            
+        type_str = type_str.upper()
+        if type_str == 'LIMIT':
+            return cls.LIMIT
+        elif type_str == 'MARKET':
+            return cls.MARKET
+        elif type_str == 'STOP_LIMIT':
+            return cls.STOP_LIMIT
+        elif type_str == 'STOP_MARKET':
+            return cls.STOP_MARKET
+        elif type_str == 'POST_ONLY':
+            return cls.POST_ONLY
+        elif type_str == 'ICEBERG':
+            return cls.ICEBERG
+        elif type_str == 'TRAILING_STOP':
+            return cls.TRAILING_STOP
+        else:
+            raise ValueError(f"Invalid order type: {type_str}")
+    
+    def __str__(self) -> str:
+        return self.name.lower()
 
 
 class TimeInForce(Enum):
@@ -81,6 +117,13 @@ class Order:
         time_in_force: Order time-in-force policy
         expiry_time: Time when the order expires (for GTD orders)
         user_id: ID of the user who placed the order
+        order_type: Type of order (limit, market, etc.)
+        stop_price: Price at which stop orders trigger
+        trail_value: Value or percentage for trailing stop orders
+        trail_is_percent: Whether trail_value is a percentage (True) or absolute value (False)
+        displayed_quantity: Visible quantity for iceberg orders
+        execution_price: Actual execution price (different from price for market orders)
+        is_triggered: Whether a stop order has been triggered
     """
     order_id: str
     side: Side
@@ -90,6 +133,13 @@ class Order:
     time_in_force: TimeInForce = TimeInForce.GTC
     expiry_time: Optional[float] = None
     user_id: Optional[str] = None
+    order_type: OrderType = OrderType.LIMIT
+    stop_price: Optional[float] = None
+    trail_value: Optional[float] = None
+    trail_is_percent: bool = False
+    displayed_quantity: Optional[float] = None
+    execution_price: Optional[float] = None
+    is_triggered: bool = False
     
     def __init__(
         self, 
@@ -100,7 +150,12 @@ class Order:
         timestamp: Optional[float] = None,
         time_in_force: Union[str, TimeInForce, None] = None,
         expiry_time: Optional[float] = None,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        order_type: Union[str, OrderType, None] = None,
+        stop_price: Optional[float] = None,
+        trail_value: Optional[float] = None,
+        trail_is_percent: bool = False,
+        displayed_quantity: Optional[float] = None
     ):
         """
         Initialize a new order.
@@ -114,27 +169,60 @@ class Order:
             time_in_force: Time-in-force option ('GTC', 'IOC', 'FOK', 'GTD')
             expiry_time: Time when the order expires (required for GTD)
             user_id: User ID who placed the order
+            order_type: Type of order ('LIMIT', 'MARKET', 'STOP_LIMIT', etc.)
+            stop_price: Price at which stop orders are triggered
+            trail_value: Value or percentage for trailing stop orders
+            trail_is_percent: Whether trail_value is a percentage
+            displayed_quantity: Visible quantity for iceberg orders
         """
         self.order_id = order_id or str(uuid.uuid4())
         self.side = side if isinstance(side, Side) else Side.from_string(side)
-        self.price = float(price)
+        self.price = float(price) if price is not None else None
         self.quantity = float(quantity)
         self.timestamp = timestamp or time.time()
         self.time_in_force = (time_in_force if isinstance(time_in_force, TimeInForce) 
                              else TimeInForce.from_string(time_in_force))
         self.expiry_time = expiry_time
         self.user_id = user_id
+        self.order_type = (order_type if isinstance(order_type, OrderType)
+                          else OrderType.from_string(order_type))
+        self.stop_price = float(stop_price) if stop_price is not None else None
+        self.trail_value = float(trail_value) if trail_value is not None else None
+        self.trail_is_percent = bool(trail_is_percent)
+        self.displayed_quantity = float(displayed_quantity) if displayed_quantity is not None else None
+        self.execution_price = None
+        self.is_triggered = False
         
         # Validation
-        if self.price <= 0:
-            raise ValueError("Price must be positive")
+        if self.order_type == OrderType.LIMIT and (self.price is None or self.price <= 0):
+            raise ValueError("Price must be positive for limit orders")
+        
+        if self.order_type == OrderType.MARKET:
+            self.price = None  # Market orders have no price
+            
         if self.quantity <= 0:
             raise ValueError("Quantity must be positive")
+            
         if self.time_in_force == TimeInForce.GTD and self.expiry_time is None:
             raise ValueError("Expiry time is required for GTD orders")
+            
+        if self.order_type in (OrderType.STOP_LIMIT, OrderType.STOP_MARKET) and self.stop_price is None:
+            raise ValueError("Stop price is required for stop orders")
+            
+        if self.order_type == OrderType.TRAILING_STOP and self.trail_value is None:
+            raise ValueError("Trail value is required for trailing stop orders")
+            
+        if self.order_type == OrderType.ICEBERG:
+            if self.displayed_quantity is None:
+                # Default to 10% of total quantity if not specified
+                self.displayed_quantity = self.quantity * 0.1
+            elif self.displayed_quantity > self.quantity:
+                raise ValueError("Displayed quantity cannot be greater than total quantity")
     
     def update(self, price: Optional[float] = None, quantity: Optional[float] = None,
-               expiry_time: Optional[float] = None) -> None:
+               expiry_time: Optional[float] = None, stop_price: Optional[float] = None, 
+               trail_value: Optional[float] = None, trail_is_percent: Optional[bool] = None,
+               displayed_quantity: Optional[float] = None) -> None:
         """
         Update order price, quantity, and/or expiry time.
         
@@ -142,19 +230,50 @@ class Order:
             price: New price (if None, keep current price)
             quantity: New quantity (if None, keep current quantity)
             expiry_time: New expiry time (if None, keep current expiry time)
+            stop_price: New stop price for stop orders
+            trail_value: New trail value for trailing stop orders
+            trail_is_percent: New trail_is_percent setting
+            displayed_quantity: New displayed quantity for iceberg orders
         """
         if price is not None:
-            if price <= 0:
-                raise ValueError("Price must be positive")
+            if self.order_type == OrderType.LIMIT and price <= 0:
+                raise ValueError("Price must be positive for limit orders")
             self.price = float(price)
         
         if quantity is not None:
             if quantity <= 0:
                 raise ValueError("Quantity must be positive")
             self.quantity = float(quantity)
+            
+            # Update displayed quantity proportionally for iceberg orders
+            if self.order_type == OrderType.ICEBERG and self.displayed_quantity is not None:
+                ratio = self.displayed_quantity / self.quantity
+                self.displayed_quantity = quantity * ratio
         
         if expiry_time is not None:
             self.expiry_time = expiry_time
+            
+        if stop_price is not None:
+            if self.order_type not in (OrderType.STOP_LIMIT, OrderType.STOP_MARKET):
+                raise ValueError("Cannot set stop_price for non-stop orders")
+            self.stop_price = float(stop_price)
+            
+        if trail_value is not None:
+            if self.order_type != OrderType.TRAILING_STOP:
+                raise ValueError("Cannot set trail_value for non-trailing stop orders")
+            self.trail_value = float(trail_value)
+            
+        if trail_is_percent is not None:
+            if self.order_type != OrderType.TRAILING_STOP:
+                raise ValueError("Cannot set trail_is_percent for non-trailing stop orders")
+            self.trail_is_percent = bool(trail_is_percent)
+            
+        if displayed_quantity is not None:
+            if self.order_type != OrderType.ICEBERG:
+                raise ValueError("Cannot set displayed_quantity for non-iceberg orders")
+            if displayed_quantity > self.quantity:
+                raise ValueError("Displayed quantity cannot be greater than total quantity")
+            self.displayed_quantity = float(displayed_quantity)
             
         # Update timestamp when order is modified
         self.timestamp = time.time()
@@ -190,7 +309,14 @@ class Order:
             "timestamp": self.timestamp,
             "time_in_force": str(self.time_in_force),
             "expiry_time": self.expiry_time,
-            "user_id": self.user_id
+            "user_id": self.user_id,
+            "order_type": str(self.order_type),
+            "stop_price": self.stop_price,
+            "trail_value": self.trail_value,
+            "trail_is_percent": self.trail_is_percent,
+            "displayed_quantity": self.displayed_quantity,
+            "execution_price": self.execution_price,
+            "is_triggered": self.is_triggered
         }
     
     @classmethod
@@ -212,7 +338,12 @@ class Order:
             timestamp=data["timestamp"],
             time_in_force=data.get("time_in_force"),
             expiry_time=data.get("expiry_time"),
-            user_id=data.get("user_id")
+            user_id=data.get("user_id"),
+            order_type=data.get("order_type"),
+            stop_price=data.get("stop_price"),
+            trail_value=data.get("trail_value"),
+            trail_is_percent=data.get("trail_is_percent", False),
+            displayed_quantity=data.get("displayed_quantity")
         )
 
 

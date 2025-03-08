@@ -26,5 +26,6 @@ benchmark = ["tabulate>=0.8.9"]
 dev = ["pytest>=7.0.0", "pytest-cov>=4.0.0", "tabulate>=0.8.9"]
 
 [project.urls]
-"Homepage" = "https://github.com/manticoretechnologies/manticore-orderbook"
+"Homepage" = "https://manticore.technology"
+"GitHub" = "https://github.com/manticoretechnologies/manticore-orderbook"
 "Bug Tracker" = "https://github.com/manticoretechnologies/manticore-orderbook/issues" 

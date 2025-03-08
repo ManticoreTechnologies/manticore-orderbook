@@ -1,283 +1,164 @@
 # Manticore OrderBook
 
-A high-performance, event-driven order book implementation for cryptocurrency exchanges. This module provides the core order matching engine with price-time priority, designed to be integrated with other modules in a larger exchange system.
+A high-performance, feature-rich limit order book implementation for financial trading applications.
 
-## Overview
+[![Python Versions](https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue)]()
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Manticore OrderBook is designed with a focused purpose: to provide a fast, reliable order book implementation that serves as the foundation for cryptocurrency exchange systems. It handles the core functionalities of an order book without overreaching into areas that should be handled by separate specialized modules.
+## Features
 
-### Key Features
-
-- **High-Performance Matching Engine**: Implements price-time priority matching with optimized data structures
-- **Event-Driven Architecture**: Provides a robust event system for integration with other components
-- **Thread-Safe Operations**: All operations are thread-safe for reliable concurrent use
-- **Comprehensive Order Types**: Supports various time-in-force options (GTC, IOC, FOK, GTD)
-- **Clean API**: Provides a simple, well-documented API for easy integration
-
-## Documentation
-
-- [API Documentation](API.md) - Detailed API reference
-- [Event System Documentation](EVENTS.md) - Complete guide to the event system
-- [Integration Guide](INTEGRATION.md) - How to integrate with other systems
-- [Performance Benchmarks](BENCHMARKS.md) - Performance metrics and tuning
+✅ **Complete Order Book Implementation** - Full-featured limit order book with best-in-class performance  
+✅ **Multiple Order Types** - Support for limit, market, FOK, IOC, post-only, and GTD orders  
+✅ **Price Improvement** - Optional price improvement for better execution  
+✅ **Event-Driven Architecture** - Real-time events for order added, cancelled, and trades executed  
+✅ **High Performance** - Optimized for high-throughput trading (17,000+ orders/second)  
+✅ **Comprehensive API** - Clean, intuitive interface with extensive documentation  
+✅ **Production Ready** - Extensively tested and benchmarked
 
 ## Installation
 
 ```bash
+# From PyPI
 pip3 install manticore-orderbook
-```
 
-Or install from source:
-
-```bash
-git clone https://github.com/your-repo/manticore-orderbook.git
+# From source
+git clone https://github.com/your-organization/manticore-orderbook.git
 cd manticore-orderbook
 pip3 install -e .
 ```
 
-## Basic Usage
-
-Here's a simple example of how to use the OrderBook:
+## Quick Start
 
 ```python
 from manticore_orderbook import OrderBook
-from manticore_orderbook.event_manager import EventManager, EventType
+from manticore_orderbook.enums import Side, EventType
 
-# Create an event manager
-event_manager = EventManager()
+# Create an order book for BTC/USD
+orderbook = OrderBook("BTC", "USD")
 
-# Create a new order book
-order_book = OrderBook(symbol="BTC/USD", event_manager=event_manager)
+# Register event handlers
+def on_trade(event):
+    print(f"Trade executed: {event.amount} @ {event.price}")
 
-# Subscribe to events
-def handle_trade(event_type, data):
-    print(f"Trade executed: {data}")
-
-event_manager.subscribe(EventType.TRADE_EXECUTED, handle_trade)
+orderbook.event_manager.register(EventType.TRADE_EXECUTED, on_trade)
 
 # Add orders
-order_book.add_order(side="buy", price=19500.0, quantity=1.5, order_id="bid1")
-order_book.add_order(side="sell", price=19600.0, quantity=1.0, order_id="ask1")
+orderbook.add_order("bid1", Side.BUY, 10000.00, 1.0)
+orderbook.add_order("ask1", Side.SELL, 10100.00, 0.5)
 
-# Execute a matching order that will generate a trade
-order_book.add_order(side="buy", price=19700.0, quantity=0.5, order_id="bid2") 
+# Get a snapshot of the current order book state
+snapshot = orderbook.get_snapshot()
+print(f"Best bid: {snapshot['bids'][0]['price'] if snapshot['bids'] else 'None'}")
+print(f"Best ask: {snapshot['asks'][0]['price'] if snapshot['asks'] else 'None'}")
 
-# Get the current state of the order book
-snapshot = order_book.get_snapshot(depth=5)
-print(snapshot)
-
-# Get order book statistics
-stats = order_book.get_statistics()
-print(stats)
+# Add a matching order that will execute
+orderbook.add_order("match1", Side.BUY, 10100.00, 0.2)
 ```
 
-## Integration with Other Modules
+## Advanced Usage
 
-### Integration with manticore-storage
-
-The OrderBook module is designed to work seamlessly with a separate storage module. Here's how to integrate with manticore-storage:
+### Different Order Types
 
 ```python
-from manticore_orderbook import OrderBook, EventType, EventManager
-from manticore_storage import StorageManager  # Hypothetical import
+from manticore_orderbook.strategies import (
+    MarketOrderStrategy,
+    FOKOrderStrategy,
+    IOCOrderStrategy,
+    PostOnlyOrderStrategy,
+    GTDOrderStrategy
+)
+import datetime
 
-# Create components
-event_manager = EventManager()
-order_book = OrderBook(symbol="BTC/USD")
-storage = StorageManager(database_url="postgresql://user:pass@localhost/exchange")
+# Market order
+orderbook.add_order("market1", Side.BUY, None, 0.5, 
+                   strategy=MarketOrderStrategy())
 
-# Set up persistence via events
-def persist_order(event_type, data):
-    if event_type == EventType.ORDER_ADDED:
-        storage.save_order(data)
-    elif event_type == EventType.ORDER_MODIFIED:
-        storage.update_order(data["order_id"], data)
-    elif event_type == EventType.ORDER_CANCELLED:
-        storage.mark_order_cancelled(data["order_id"])
+# Fill-or-Kill order
+orderbook.add_order("fok1", Side.BUY, 10050.00, 2.0,
+                   strategy=FOKOrderStrategy())
 
-def persist_trade(event_type, data):
-    storage.save_trade(data)
+# Immediate-or-Cancel order
+orderbook.add_order("ioc1", Side.SELL, 10100.00, 1.0,
+                   strategy=IOCOrderStrategy())
 
-# Subscribe to events
-event_manager.subscribe(EventType.ORDER_ADDED, persist_order)
-event_manager.subscribe(EventType.ORDER_MODIFIED, persist_order)
-event_manager.subscribe(EventType.ORDER_CANCELLED, persist_order)
-event_manager.subscribe(EventType.TRADE_EXECUTED, persist_trade)
+# Post-Only order
+orderbook.add_order("post1", Side.BUY, 9900.00, 3.0,
+                   strategy=PostOnlyOrderStrategy())
 
-# Operation continues with automatic persistence
-order_book.add_order(side="buy", price=19500.0, quantity=1.5)
+# Good-Till-Date order
+expiry = datetime.datetime.now() + datetime.timedelta(days=1)
+orderbook.add_order("gtd1", Side.SELL, 10200.00, 0.75,
+                   strategy=GTDOrderStrategy(expiry))
 ```
 
-### Integration with manticore-matching
-
-For more advanced matching algorithms beyond the basic price-time priority:
+### Price Improvement
 
 ```python
-from manticore_orderbook import OrderBook, Order, EventType, EventManager
-from manticore_matching import MatchingEngine  # Hypothetical import
+# Create an order book with price improvement enabled
+orderbook = OrderBook("ETH", "USD", enable_price_improvement=True)
 
-# Create components
-event_manager = EventManager()
-order_book = OrderBook(symbol="BTC/USD")
-matching_engine = MatchingEngine(strategy="pro_rata")  # Example custom matching strategy
-
-# Intercept orders before they're added to the book
-def pre_process_order(event_type, data):
-    # Apply custom matching logic
-    if data.get("special_instructions"):
-        matching_engine.process_special_order(data)
-
-# Subscribe to pre-processing
-event_manager.subscribe(EventType.ORDER_ADDED, pre_process_order)
+# The order book will automatically match orders at the best available price,
+# even if that's better than what the taker requested
 ```
 
-### Using with a Full Exchange System
+## Performance
 
-In a complete exchange system, the OrderBook would be one component among many. Here's a conceptual example:
+Manticore OrderBook is designed for high-performance trading applications:
 
-```python
-from manticore_orderbook import OrderBook, EventManager
-from manticore_storage import StorageManager  # Hypothetical
-from manticore_auth import AuthManager  # Hypothetical
-from manticore_risk import RiskManager  # Hypothetical
-from manticore_api import ApiServer  # Hypothetical
+- **Order Addition**: ~15,000 orders/second
+- **Order Cancellation**: ~14,000 cancels/second
+- **Order Matching**: ~17,000 orders/second with multiple matches
 
-class Exchange:
-    def __init__(self):
-        # Core components
-        self.event_manager = EventManager()
-        self.storage = StorageManager()
-        self.auth = AuthManager()
-        self.risk = RiskManager()
-        
-        # Create order books for each market
-        self.markets = {}
-        self.setup_markets()
-        
-        # API layer
-        self.api = ApiServer(self)
-    
-    def setup_markets(self):
-        market_configs = self.storage.get_market_configs()
-        for config in market_configs:
-            symbol = config["symbol"]
-            self.markets[symbol] = OrderBook(symbol=symbol)
-            
-    def place_order(self, user_id, symbol, side, price, quantity):
-        # Authenticate
-        if not self.auth.validate_user(user_id):
-            return {"error": "Unauthorized"}
-            
-        # Risk check
-        if not self.risk.check_order(user_id, symbol, side, price, quantity):
-            return {"error": "Risk limits exceeded"}
-            
-        # Place the order
-        order_book = self.markets.get(symbol)
-        if not order_book:
-            return {"error": "Market not found"}
-            
-        order_id = order_book.add_order(
-            side=side, 
-            price=price, 
-            quantity=quantity,
-            user_id=user_id
-        )
-        
-        return {"order_id": order_id}
-```
+## Documentation
 
-## Event System
+- [User Guide](docs/USER_GUIDE.md) - Comprehensive guide to using the library
+- [API Documentation](docs/API.md) - Detailed API reference
+- [Examples](examples/) - Code examples demonstrating various features
 
-The event system is at the heart of integration capabilities. Here are the key events you can subscribe to:
+## Visualization
 
-| Event Type | Description | Data Payload |
-|------------|-------------|--------------|
-| ORDER_ADDED | Triggered when an order is added to the book | Order details |
-| ORDER_MODIFIED | Triggered when an order is modified | Updated order details |
-| ORDER_CANCELLED | Triggered when an order is cancelled | Order ID and metadata |
-| ORDER_FILLED | Triggered when an order is partially or fully filled | Fill details |
-| TRADE_EXECUTED | Triggered when a trade is executed | Trade details |
-| PRICE_LEVEL_CHANGED | Triggered when a price level changes | Price level details |
-| BOOK_UPDATED | General notification that the book state has changed | Summary of changes |
-
-## Benchmark Results
-
-The OrderBook has been benchmarked for performance. Here are the key metrics:
-
-- Adding orders: ~28,000 orders/second
-- Modifying orders: ~64,000 modifications/second
-- Cancelling orders: ~120,000 cancellations/second
-- Matching orders: ~50,000 operations/second in batch mode
-- Depth queries: ~170,000 queries/second
-
-You can run the benchmarks yourself with:
+Manticore OrderBook includes a visualization server for real-time order book display:
 
 ```bash
-python3 benchmark.py
+python3 -m manticore_orderbook.visualizer
 ```
 
+![OrderBook Visualization](docs/images/orderbook_viz.png)
+
 ## Development
+
+### Setup Development Environment
+
+```bash
+# Clone the repository
+git clone https://github.com/your-organization/manticore-orderbook.git
+cd manticore-orderbook
+
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install development dependencies
+pip3 install -e ".[dev]"
+```
 
 ### Running Tests
 
 ```bash
+# Run all tests
 python3 -m unittest discover
+
+# Run specific test module
+python3 -m unittest tests.test_orderbook
+
+# Run benchmarks
+python3 -m tests.benchmark.test_orderbook_benchmark
 ```
 
-### Building the Package
+## Contributing
 
-```bash
-python3 setup.py bdist_wheel
-```
-
-## API Reference
-
-### OrderBook
-
-The core class that manages orders and handles matching.
-
-```python
-order_book = OrderBook(
-    symbol="BTC/USD",
-    maker_fee_rate=0.001,  # 0.1%
-    taker_fee_rate=0.002,  # 0.2%
-    enable_logging=True
-)
-```
-
-#### Key Methods
-
-- `add_order(side, price, quantity, order_id=None, time_in_force=None)`: Add a new order to the book
-- `modify_order(order_id, new_price=None, new_quantity=None)`: Modify an existing order
-- `cancel_order(order_id)`: Cancel an order
-- `get_snapshot(depth=10)`: Get the current order book state
-- `get_order(order_id)`: Get details of a specific order
-- `get_statistics()`: Get order book statistics
-
-### EventManager
-
-Manages the event system for all components.
-
-```python
-event_manager = EventManager(enable_logging=True, max_history_size=1000)
-```
-
-#### Key Methods
-
-- `subscribe(event_type, handler)`: Subscribe to an event type
-- `unsubscribe(event_type, handler)`: Unsubscribe from an event type
-- `publish(event_type, data, symbol=None)`: Publish an event
-- `subscribe_all(handler)`: Subscribe to all event types
-- `get_event_history(limit=100)`: Get recent event history
-
-## Design Considerations
-
-1. **Separation of Concerns**: The OrderBook focuses solely on order book management without handling persistence, authentication, etc.
-2. **Event-Driven Architecture**: All state changes are published as events, allowing other components to react accordingly
-3. **Performance First**: Data structures and algorithms are optimized for high throughput
-4. **Thread Safety**: All methods are protected against concurrent access
+Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and suggest features.
 
 ## License
 
-MIT License 
+Manticore OrderBook is licensed under the MIT License. See the [LICENSE](LICENSE) file for details. 

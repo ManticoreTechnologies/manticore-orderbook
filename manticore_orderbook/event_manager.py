@@ -24,8 +24,11 @@ class EventType(Enum):
     ORDER_CANCELLED = auto()
     ORDER_FILLED = auto()  # Includes partial fills
     ORDER_EXPIRED = auto()
+    ORDER_REJECTED = auto() # Order was rejected for some reason
+    ORDER_TRIGGERED = auto() # Stop or trailing stop order was triggered
     
     # Trade events
+    TRADE = auto()
     TRADE_EXECUTED = auto()
     
     # Price level events
@@ -40,6 +43,7 @@ class EventType(Enum):
     
     # Book events
     BOOK_UPDATED = auto()
+    BOOK_CLEARED = auto()
     DEPTH_CHANGED = auto()
     
     # System events

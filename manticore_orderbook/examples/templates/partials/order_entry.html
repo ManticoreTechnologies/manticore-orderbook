@@ -1,0 +1,113 @@
+<!-- Order Entry -->
+<div class="card trading-card mt-3">
+    <div class="card-header">
+        <ul class="nav nav-tabs order-type-nav card-header-tabs">
+            <li class="nav-item">
+                <a class="nav-link active" data-order-type="limit" href="#">Limit</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-order-type="market" href="#">Market</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-order-type="stop_limit" href="#">Stop-Limit</a>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        <!-- Limit Order Form -->
+        <div id="limit-order-form" class="order-form-content">
+            <form class="order-form" data-order-type="limit">
+                <div class="side-selector">
+                    <div class="side-btn buy active" data-side="buy">Buy</div>
+                    <div class="side-btn sell" data-side="sell">Sell</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Price</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control price-input" step="0.01" min="0" placeholder="Price">
+                        <span class="input-group-text">USD</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Amount</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control quantity-input" step="0.001" min="0" placeholder="Amount">
+                        <span class="input-group-text">BTC</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Total</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control total-input" step="0.01" min="0" placeholder="Total">
+                        <span class="input-group-text">USD</span>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-success w-100 mt-3">Place Limit Order</button>
+            </form>
+        </div>
+        
+        <!-- Market Order Form -->
+        <div id="market-order-form" class="order-form-content" style="display: none;">
+            <form class="order-form" data-order-type="market">
+                <div class="side-selector">
+                    <div class="side-btn buy active" data-side="buy">Buy</div>
+                    <div class="side-btn sell" data-side="sell">Sell</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Amount</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control quantity-input" step="0.001" min="0" placeholder="Amount">
+                        <span class="input-group-text">BTC</span>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Market orders are executed immediately at the best available price.
+                </div>
+                
+                <button type="submit" class="btn btn-success w-100 mt-3">Place Market Order</button>
+            </form>
+        </div>
+        
+        <!-- Stop-Limit Order Form -->
+        <div id="stop_limit-order-form" class="order-form-content" style="display: none;">
+            <form class="order-form" data-order-type="stop_limit">
+                <div class="side-selector">
+                    <div class="side-btn buy active" data-side="buy">Buy</div>
+                    <div class="side-btn sell" data-side="sell">Sell</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Stop Price</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control stop-price-input" step="0.01" min="0" placeholder="Stop Price">
+                        <span class="input-group-text">USD</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Limit Price</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control price-input" step="0.01" min="0" placeholder="Limit Price">
+                        <span class="input-group-text">USD</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Amount</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control quantity-input" step="0.001" min="0" placeholder="Amount">
+                        <span class="input-group-text">BTC</span>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-success w-100 mt-3">Place Stop-Limit Order</button>
+            </form>
+        </div>
+    </div>
+</div> 

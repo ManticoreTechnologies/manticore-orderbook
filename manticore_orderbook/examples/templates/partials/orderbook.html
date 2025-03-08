@@ -1,0 +1,37 @@
+<!-- Order Book -->
+<div class="card trading-card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title m-0">Order Book</h5>
+        <div class="orderbook-controls">
+            <span>Precision:</span>
+            <select id="precision-selector" class="form-select form-select-sm precision-selector">
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="2" selected>2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+            </select>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="orderbook-container">
+            <!-- Column Headers -->
+            <div class="orderbook-headers">
+                <div class="orderbook-header-row">
+                    <div class="orderbook-cell">Price</div>
+                    <div class="orderbook-cell">Quantity</div>
+                    <div class="orderbook-cell">Total</div>
+                </div>
+            </div>
+            
+            <!-- Asks (Sell Orders) -->
+            <div id="asks-container" class="asks-container"></div>
+            
+            <!-- Spread -->
+            <div id="spread-container" class="spread-container">Spread: 0.00 (0.00%)</div>
+            
+            <!-- Bids (Buy Orders) -->
+            <div id="bids-container" class="bids-container"></div>
+        </div>
+    </div>
+</div> 

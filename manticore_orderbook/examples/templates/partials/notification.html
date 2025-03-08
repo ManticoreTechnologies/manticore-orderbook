@@ -1,0 +1,52 @@
+<!-- Toast Container for Notifications -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="notificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <i id="toastIcon" class="fas fa-info-circle me-2 text-primary"></i>
+            <strong id="toastTitle" class="me-auto">Notification</strong>
+            <small id="toastTime">just now</small>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div id="toastMessage" class="toast-body">
+            This is a notification message.
+        </div>
+    </div>
+</div>
+
+<script>
+// Function to show notifications
+function showNotification(title, message, type = 'info') {
+    // Set icon and color based on type
+    const iconElement = document.getElementById('toastIcon');
+    const titleElement = document.getElementById('toastTitle');
+    
+    // Reset classes
+    iconElement.className = 'fas me-2';
+    
+    // Set appropriate icon and color based on type
+    switch(type) {
+        case 'success':
+            iconElement.classList.add('fa-check-circle', 'text-success');
+            break;
+        case 'error':
+            iconElement.classList.add('fa-exclamation-circle', 'text-danger');
+            break;
+        case 'warning':
+            iconElement.classList.add('fa-exclamation-triangle', 'text-warning');
+            break;
+        case 'info':
+        default:
+            iconElement.classList.add('fa-info-circle', 'text-primary');
+    }
+    
+    // Set title and message
+    titleElement.textContent = title;
+    document.getElementById('toastMessage').textContent = message;
+    document.getElementById('toastTime').textContent = 'just now';
+    
+    // Show the toast
+    const toastElement = document.getElementById('notificationToast');
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+}
+</script> 

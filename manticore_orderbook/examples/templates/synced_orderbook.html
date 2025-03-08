@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manticore Pro - Advanced Order Book</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/orderbook-pro.css">
+</head>
+<body>
+    {% include 'partials/navbar.html' %}
+
+    <!-- Main Trading Dashboard -->
+    <div class="trading-dashboard">
+        <div class="dashboard-controls">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <div class="symbol-badge me-3">
+                        <i class="fab fa-bitcoin text-warning"></i>
+                        <span>BTC/USD</span>
+                    </div>
+                    <div class="precision-controls">
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-secondary active precision-btn" data-precision="0">0</button>
+                            <button class="btn btn-outline-secondary precision-btn" data-precision="1">1</button>
+                            <button class="btn btn-outline-secondary precision-btn" data-precision="2">2</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="autoGenerateOrders">
+                    <label class="form-check-label" for="autoGenerateOrders">Auto Generate</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="dashboard-content">
+            <!-- LEFT COLUMN: Order Book -->
+            <div class="dashboard-column order-book-column">
+                <div class="card orderbook-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Order Book</h5>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-secondary active" id="groupBtn">Group</button>
+                            <button type="button" class="btn btn-outline-secondary" id="expandBtn">Expand</button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="order-book-container">
+                            <div class="asks-container">
+                                <table class="table table-sm mb-0 asks-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-end">Price</th>
+                                            <th class="text-end">Amount</th>
+                                            <th class="text-end">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="asks"></tbody>
+                                </table>
+                            </div>
+
+                            <div class="spread-row">
+                                <div class="spread-info">
+                                    <span class="spread-value">-.--</span>
+                                    <span class="spread-label">(Spread)</span>
+                                </div>
+                            </div>
+
+                            <div class="bids-container">
+                                <table class="table table-sm mb-0 bids-table">
+                                    <tbody id="bids"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MIDDLE COLUMN: Order Entry & Market Metrics -->
+            <div class="dashboard-column order-entry-column">
+                <!-- Market Metrics -->
+                <div class="card metrics-card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Market Metrics</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="metrics-grid">
+                            <div class="metric-item">
+                                <div class="metric-label">Best Bid</div>
+                                <div class="metric-value best-bid-value">-.--</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Best Ask</div>
+                                <div class="metric-value best-ask-value">-.--</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Spread</div>
+                                <div class="metric-value spread-value">-.--</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Mid Price</div>
+                                <div class="metric-value mid-price-value">-.--</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Bid Volume</div>
+                                <div class="metric-value bid-volume-value">0</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Ask Volume</div>
+                                <div class="metric-value ask-volume-value">0</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">24h Change</div>
+                                <div class="metric-value change-value">-.--</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">24h Volume</div>
+                                <div class="metric-value volume-value">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Entry Form -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Place Order</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Order Type Tabs -->
+                        <ul class="nav nav-tabs mb-3" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="limit-tab" data-bs-toggle="tab" data-bs-target="#limit-panel" type="button" role="tab" aria-controls="limit-panel" aria-selected="true">Limit</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="market-tab" data-bs-toggle="tab" data-bs-target="#market-panel" type="button" role="tab" aria-controls="market-panel" aria-selected="false">Market</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="stoplimit-tab" data-bs-toggle="tab" data-bs-target="#stoplimit-panel" type="button" role="tab" aria-controls="stoplimit-panel" aria-selected="false">Stop-Limit</button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content">
+                            <!-- Limit Order Form -->
+                            <div class="tab-pane fade show active" id="limit-panel" role="tabpanel" aria-labelledby="limit-tab">
+                                <form id="limit-order-form">
+                                    <div class="mb-3 d-flex">
+                                        <div class="btn-group w-100">
+                                            <button type="button" class="btn btn-success flex-grow-1 side-btn" data-side="buy">Buy</button>
+                                            <button type="button" class="btn btn-outline-danger flex-grow-1 side-btn" data-side="sell">Sell</button>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Price</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="limitPrice" placeholder="0.00" step="0.01">
+                                            <span class="input-group-text">USD</span>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Amount</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="limitAmount" placeholder="0.00" step="0.01">
+                                            <span class="input-group-text">BTC</span>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Total</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="limitTotal" readonly>
+                                            <span class="input-group-text">USD</span>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-success w-100">Buy BTC</button>
+                                </form>
+                            </div>
+
+                            <!-- Market Order Form -->
+                            <div class="tab-pane fade" id="market-panel" role="tabpanel" aria-labelledby="market-tab">
+                                <form id="market-order-form">
+                                    <div class="mb-3 d-flex">
+                                        <div class="btn-group w-100">
+                                            <button type="button" class="btn btn-success flex-grow-1 side-btn" data-side="buy">Buy</button>
+                                            <button type="button" class="btn btn-outline-danger flex-grow-1 side-btn" data-side="sell">Sell</button>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Amount</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="marketAmount" placeholder="0.00" step="0.01">
+                                            <span class="input-group-text">BTC</span>
+                                        </div>
+                                    </div>
+                                    <div class="text-muted mb-3 small">
+                                        <i class="fas fa-info-circle"></i> Market orders execute immediately at the best available price
+                                    </div>
+                                    <button type="submit" class="btn btn-success w-100">Buy BTC</button>
+                                </form>
+                            </div>
+
+                            <!-- Stop-Limit Order Form -->
+                            <div class="tab-pane fade" id="stoplimit-panel" role="tabpanel" aria-labelledby="stoplimit-tab">
+                                <form id="stoplimit-order-form">
+                                    <div class="mb-3 d-flex">
+                                        <div class="btn-group w-100">
+                                            <button type="button" class="btn btn-success flex-grow-1 side-btn" data-side="buy">Buy</button>
+                                            <button type="button" class="btn btn-outline-danger flex-grow-1 side-btn" data-side="sell">Sell</button>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Stop Price</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="stopPrice" placeholder="0.00" step="0.01">
+                                            <span class="input-group-text">USD</span>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Limit Price</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="stopLimitPrice" placeholder="0.00" step="0.01">
+                                            <span class="input-group-text">USD</span>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Amount</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="stopLimitAmount" placeholder="0.00" step="0.01">
+                                            <span class="input-group-text">BTC</span>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Total</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="stopLimitTotal" readonly>
+                                            <span class="input-group-text">USD</span>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-success w-100">Buy BTC</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Open Orders & Recent Trades -->
+            <div class="dashboard-column orders-trades-column">
+                <!-- Open Orders -->
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Open Orders</h5>
+                        <button class="btn btn-sm btn-outline-danger" id="cancelAllBtn">Cancel All</button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Side</th>
+                                        <th>Price</th>
+                                        <th>Amount</th>
+                                        <th>Total</th>
+                                        <th>Time</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="orders">
+                                    <!-- Orders will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="no-orders-message" class="text-center py-4 text-muted">
+                            <i class="fas fa-inbox mb-2 d-block" style="font-size: 1.5rem;"></i>
+                            <p class="mb-0">You don't have any open orders</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Trades -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Recent Trades</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Price</th>
+                                        <th>Amount</th>
+                                        <th>Total</th>
+                                        <th>Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="trades">
+                                    <!-- Trades will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="no-trades-message" class="text-center py-4 text-muted">
+                            <i class="fas fa-chart-line mb-2 d-block" style="font-size: 1.5rem;"></i>
+                            <p class="mb-0">No recent trades</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% include 'partials/notification.html' %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+    <script src="/static/js/orderbook-pro.js"></script>
+</body>
+</html> 

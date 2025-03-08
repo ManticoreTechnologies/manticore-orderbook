@@ -1,0 +1,56 @@
+<!-- Navigation Bar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center" href="#">
+            <i class="fas fa-cubes me-2"></i>
+            <span>Manticore</span>
+            <span class="text-primary ms-1 fw-light">Pro</span>
+        </a>
+        
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-exchange-alt me-1"></i>BTC/USD
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item symbol-selector" data-symbol="BTC/USD" href="#">
+                            <i class="fab fa-bitcoin me-2 text-warning"></i>BTC/USD
+                        </a></li>
+                        <li><a class="dropdown-item symbol-selector" data-symbol="ETH/USD" href="#">
+                            <i class="fab fa-ethereum me-2 text-primary"></i>ETH/USD
+                        </a></li>
+                        <li><a class="dropdown-item symbol-selector" data-symbol="SOL/USD" href="#">
+                            <i class="fas fa-sun me-2 text-success"></i>SOL/USD
+                        </a></li>
+                    </ul>
+                </li>
+            </ul>
+            
+            <ul class="navbar-nav">
+                <!-- Connection Status Indicator -->
+                <li class="nav-item me-3">
+                    <div class="status-indicator">
+                        <div class="d-flex align-items-center px-2 py-1 rounded-pill" style="background-color: rgba(255, 193, 7, 0.15);">
+                            <div class="spinner-grow spinner-grow-sm text-warning me-1" role="status" style="width: 6px; height: 6px;">
+                                <span class="visually-hidden">Connecting...</span>
+                            </div>
+                            <small class="text-warning">Connecting</small>
+                        </div>
+                    </div>
+                </li>
+                
+                <!-- Theme Toggle -->
+                <li class="nav-item me-2">
+                    <div id="theme-toggle" class="theme-switch dark">
+                        <span class="slider"></span>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav> 
