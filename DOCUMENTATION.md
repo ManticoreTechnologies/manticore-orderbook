@@ -14,6 +14,7 @@ We have created comprehensive documentation for the Manticore OrderBook library:
    - Changelog with version history
 3. **Built the documentation site** which is available in `mkdocs-docs/site/`
 4. **Committed all documentation** to the Git repository
+5. **Corrected visualizer documentation** to reference the proper module path
 
 ## Accessing the Documentation
 
@@ -24,7 +25,24 @@ cd mkdocs-docs
 mkdocs serve
 ```
 
-## GitHub Pages Deployment
+## Running the Visualizer
+
+The documentation mentions the OrderBook visualizer, which can be run with:
+
+```bash
+python3 -m tests.visual.orderbook_visualizer
+```
+
+Or using the provided shell script:
+
+```bash
+chmod +x manticore_orderbook/examples/start_visualizer.sh
+./manticore_orderbook/examples/start_visualizer.sh
+```
+
+## Publishing Options
+
+### 1. GitHub Pages Deployment
 
 To deploy the documentation to GitHub Pages, run:
 
@@ -35,13 +53,49 @@ mkdocs gh-deploy
 
 This will build and deploy the site to the gh-pages branch of your GitHub repository.
 
-## Other Publishing Options
+### 2. Read the Docs Integration
 
-Alternatively, you can:
+To publish on Read the Docs:
 
-1. **Copy the `site` directory** to your web server or documentation hosting platform
-2. **Use Read the Docs** by connecting your GitHub repository to readthedocs.org
-3. **Host on your own domain** by setting up DNS to point to GitHub Pages
+1. Create a `.readthedocs.yml` file in your repository root:
+   ```yaml
+   version: 2
+   
+   mkdocs:
+     configuration: mkdocs-docs/mkdocs.yml
+     
+   python:
+     version: 3.8
+     install:
+       - requirements: docs/requirements.txt
+   ```
+
+2. Create `docs/requirements.txt` with:
+   ```
+   mkdocs>=1.4.0
+   mkdocs-material>=8.5.0
+   pymdown-extensions>=9.0
+   ```
+
+3. Connect your GitHub repository to Read the Docs at: https://readthedocs.org/dashboard/import/
+
+### 3. PyPI Documentation
+
+The documentation is also available on PyPI when users install or browse the package:
+
+```bash
+pip3 install manticore-orderbook
+```
+
+The README.md and long_description are displayed on the PyPI project page.
+
+### 4. Self-Hosted Web Server
+
+To host on your own web server:
+
+1. Build the documentation: `cd mkdocs-docs && mkdocs build`
+2. Copy the `site` directory to your web server's document root
+3. Configure your web server (Apache, Nginx, etc.) to serve the files
 
 ## Updating Documentation
 
