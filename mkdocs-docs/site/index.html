@@ -329,6 +329,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#visualization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Visualization
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -495,6 +504,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#visualization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Visualization
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -560,6 +578,12 @@ pip3<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </
 <span class="c1"># Add a matching order that will execute</span>
 <span class="n">orderbook</span><span class="o">.</span><span class="n">add_order</span><span class="p">(</span><span class="s2">&quot;match1&quot;</span><span class="p">,</span> <span class="n">Side</span><span class="o">.</span><span class="n">BUY</span><span class="p">,</span> <span class="mf">10100.00</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)</span>
 </code></pre></div>
+<p>For more detailed instructions, please see the <a href="user-guide/">User Guide</a>.</p>
+<h2 id="visualization">Visualization<a class="headerlink" href="#visualization" title="Permanent link">&para;</a></h2>
+<p>Manticore OrderBook includes a visualization server for real-time order book display:</p>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>-m<span class="w"> </span>tests.visual.orderbook_visualizer
+</code></pre></div>
+<p>This will start a web server that you can access at http://127.0.0.1:5000 to view a real-time visualization of the order book with interactive features.</p>
 <p>For more detailed instructions, please see the <a href="user-guide/">User Guide</a>.</p>
 
 

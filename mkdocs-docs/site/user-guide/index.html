@@ -478,6 +478,63 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#visualizing-the-orderbook" class="md-nav__link">
+    <span class="md-ellipsis">
+      Visualizing the OrderBook
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Visualizing the OrderBook">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#running-the-visualizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Running the Visualizer
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Running the Visualizer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-the-shell-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using the Shell Script
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#customizing-the-visualizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Customizing the Visualizer
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interacting-with-the-visualizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Interacting with the Visualizer
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -749,6 +806,63 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#visualizing-the-orderbook" class="md-nav__link">
+    <span class="md-ellipsis">
+      Visualizing the OrderBook
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Visualizing the OrderBook">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#running-the-visualizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Running the Visualizer
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Running the Visualizer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#using-the-shell-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      Using the Shell Script
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#customizing-the-visualizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Customizing the Visualizer
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interacting-with-the-visualizer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Interacting with the Visualizer
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -900,9 +1014,50 @@ pip3<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </
 </li>
 <li>
 <p><strong>Order ID Generation</strong><br />
-   Use efficient order ID generation. Shorter strings use less memory. </p>
+   Use efficient order ID generation. Shorter strings use less memory.</p>
 </li>
 </ol>
+<h2 id="visualizing-the-orderbook">Visualizing the OrderBook<a class="headerlink" href="#visualizing-the-orderbook" title="Permanent link">&para;</a></h2>
+<p>Manticore OrderBook comes with a built-in visualization tool that provides a real-time view of the order book, trades, and market metrics.</p>
+<h3 id="running-the-visualizer">Running the Visualizer<a class="headerlink" href="#running-the-visualizer" title="Permanent link">&para;</a></h3>
+<p>To start the OrderBook visualizer:</p>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>-m<span class="w"> </span>tests.visual.orderbook_visualizer
+</code></pre></div>
+<p>By default, this will:
+- Start a web server on http://127.0.0.1:5000
+- Create a simulated order book for BTC/USD
+- Auto-generate random orders to demonstrate functionality</p>
+<h4 id="using-the-shell-script">Using the Shell Script<a class="headerlink" href="#using-the-shell-script" title="Permanent link">&para;</a></h4>
+<p>For convenience, you can also use the provided shell script:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Make the script executable (first time only)</span>
+chmod<span class="w"> </span>+x<span class="w"> </span>manticore_orderbook/examples/start_visualizer.sh
+
+<span class="c1"># Run the visualizer</span>
+./manticore_orderbook/examples/start_visualizer.sh
+</code></pre></div>
+<p>The shell script provides a more user-friendly interface with the same options:</p>
+<div class="highlight"><pre><span></span><code>./manticore_orderbook/examples/start_visualizer.sh<span class="w"> </span>--symbol<span class="w"> </span>ETH/USD<span class="w"> </span>--port<span class="w"> </span><span class="m">8080</span>
+</code></pre></div>
+<p>Or using short options:</p>
+<div class="highlight"><pre><span></span><code>./manticore_orderbook/examples/start_visualizer.sh<span class="w"> </span>-s<span class="w"> </span>ETH/USD<span class="w"> </span>-p<span class="w"> </span><span class="m">8080</span><span class="w"> </span>-d
+</code></pre></div>
+<h3 id="customizing-the-visualizer">Customizing the Visualizer<a class="headerlink" href="#customizing-the-visualizer" title="Permanent link">&para;</a></h3>
+<p>The visualizer accepts several command-line arguments:</p>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>-m<span class="w"> </span>tests.visual.orderbook_visualizer<span class="w"> </span>--symbol<span class="w"> </span>ETH/USD<span class="w"> </span>--port<span class="w"> </span><span class="m">8080</span><span class="w"> </span>--no-generate
+</code></pre></div>
+<p>Available options:
+- <code>--symbol</code>: Set the trading pair symbol (default: BTC/USD)
+- <code>--port</code>: Set the web server port (default: 5000)
+- <code>--host</code>: Set the web server host (default: 127.0.0.1)
+- <code>--no-generate</code>: Disable automatic generation of random orders
+- <code>--debug</code>: Enable debug mode with additional logging</p>
+<h3 id="interacting-with-the-visualizer">Interacting with the Visualizer<a class="headerlink" href="#interacting-with-the-visualizer" title="Permanent link">&para;</a></h3>
+<p>The web interface allows you to:
+- Place limit, market, and stop-limit orders
+- View the current state of the order book
+- Track your open orders and cancel them if needed
+- See recent trades and market metrics
+- Toggle between light and dark themes </p>
 
 
 

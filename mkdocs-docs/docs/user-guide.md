@@ -176,4 +176,69 @@ orderbook = OrderBook(
    Keep event handlers lightweight. For heavy processing, queue events and process asynchronously.
 
 4. **Order ID Generation**  
-   Use efficient order ID generation. Shorter strings use less memory. 
+   Use efficient order ID generation. Shorter strings use less memory.
+
+## Visualizing the OrderBook
+
+Manticore OrderBook comes with a built-in visualization tool that provides a real-time view of the order book, trades, and market metrics.
+
+### Running the Visualizer
+
+To start the OrderBook visualizer:
+
+```bash
+python3 -m tests.visual.orderbook_visualizer
+```
+
+By default, this will:
+- Start a web server on http://127.0.0.1:5000
+- Create a simulated order book for BTC/USD
+- Auto-generate random orders to demonstrate functionality
+
+#### Using the Shell Script
+
+For convenience, you can also use the provided shell script:
+
+```bash
+# Make the script executable (first time only)
+chmod +x manticore_orderbook/examples/start_visualizer.sh
+
+# Run the visualizer
+./manticore_orderbook/examples/start_visualizer.sh
+```
+
+The shell script provides a more user-friendly interface with the same options:
+
+```bash
+./manticore_orderbook/examples/start_visualizer.sh --symbol ETH/USD --port 8080
+```
+
+Or using short options:
+
+```bash
+./manticore_orderbook/examples/start_visualizer.sh -s ETH/USD -p 8080 -d
+```
+
+### Customizing the Visualizer
+
+The visualizer accepts several command-line arguments:
+
+```bash
+python3 -m tests.visual.orderbook_visualizer --symbol ETH/USD --port 8080 --no-generate
+```
+
+Available options:
+- `--symbol`: Set the trading pair symbol (default: BTC/USD)
+- `--port`: Set the web server port (default: 5000)
+- `--host`: Set the web server host (default: 127.0.0.1)
+- `--no-generate`: Disable automatic generation of random orders
+- `--debug`: Enable debug mode with additional logging
+
+### Interacting with the Visualizer
+
+The web interface allows you to:
+- Place limit, market, and stop-limit orders
+- View the current state of the order book
+- Track your open orders and cancel them if needed
+- See recent trades and market metrics
+- Toggle between light and dark themes 

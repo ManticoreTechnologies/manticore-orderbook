@@ -56,3 +56,15 @@ orderbook.add_order("match1", Side.BUY, 10100.00, 0.2)
 ```
 
 For more detailed instructions, please see the [User Guide](user-guide.md).
+
+## Visualization
+
+Manticore OrderBook includes a visualization server for real-time order book display:
+
+```bash
+python3 -m tests.visual.orderbook_visualizer
+```
+
+This will start a web server that you can access at http://127.0.0.1:5000 to view a real-time visualization of the order book with interactive features.
+
+For more detailed instructions, please see the [User Guide](user-guide.md).
